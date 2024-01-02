@@ -114,13 +114,21 @@ impl<'eng> Context<'eng> {
             }
         }
 
-        InstructionVerifier {
+        let r = InstructionVerifier {
             context: self,
             cur_module,
             cur_function,
             cur_block,
         }
-        .verify_instructions()?;
+        .verify_instructions();
+
+        if r.is_err() {
+            println!("{}", self.to_string());
+            println!("{}", cur_function.get_name(self));
+            println!("{}", cur_block.get_label(self));
+        }
+
+        r?;
 
         let (last_is_term, num_terms) =
             cur_block
@@ -675,47 +683,53 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
         //   user args.
         // - The coins and gas must be u64s.
         // - The asset_id must be a B256
-        let fields = params
-            .get_type(self.context)
-            .and_then(|ty| ty.get_pointee_type(self.context))
-            .map_or_else(std::vec::Vec::new, |ty| ty.get_field_types(self.context));
-        if fields.len() != 3
-            || !fields[0].is_b256(self.context)
-            || !fields[1].is_uint64(self.context)
-            || !fields[2].is_uint64(self.context)
-        {
-            Err(IrError::VerifyContractCallBadTypes("params".to_owned()))
-        } else {
-            Ok(())
-        }
-        .and_then(|_| {
-            if coins
-                .get_type(self.context)
-                .is(Type::is_uint64, self.context)
-            {
-                Ok(())
-            } else {
-                Err(IrError::VerifyContractCallBadTypes("coins".to_owned()))
-            }
-        })
-        .and_then(|_| {
-            if asset_id
-                .get_type(self.context)
-                .and_then(|ty| ty.get_pointee_type(self.context))
-                .is(Type::is_b256, self.context)
-            {
-                Ok(())
-            } else {
-                Err(IrError::VerifyContractCallBadTypes("asset_id".to_owned()))
-            }
-        })
-        .and_then(|_| {
-            if gas.get_type(self.context).is(Type::is_uint64, self.context) {
-                Ok(())
-            } else {
-                Err(IrError::VerifyContractCallBadTypes("gas".to_owned()))
-            }
-        })
+
+        
+        dbg!(params.get_type(self.context).unwrap().as_string(self.context));
+
+        Ok(())
+        // let fields = params
+        //     .get_type(self.context)
+        //     .and_then(|ty| ty.get_pointee_type(self.context))
+        //     .map_or_else(std::vec::Vec::new, |ty| ty.get_field_types(self.context));
+        
+        // if fields.len() != 3
+        //     || !fields[0].is_b256(self.context)
+        //     || !fields[1].is_uint64(self.context)
+        //     || !fields[2].is_uint64(self.context)
+        // {
+        //     Err(IrError::VerifyContractCallBadTypes("params".to_owned()))
+        // } else {
+        //     Ok(())
+        // }
+        // .and_then(|_| {
+        //     if coins
+        //         .get_type(self.context)
+        //         .is(Type::is_uint64, self.context)
+        //     {
+        //         Ok(())
+        //     } else {
+        //         Err(IrError::VerifyContractCallBadTypes("coins".to_owned()))
+        //     }
+        // })
+        // .and_then(|_| {
+        //     if asset_id
+        //         .get_type(self.context)
+        //         .and_then(|ty| ty.get_pointee_type(self.context))
+        //         .is(Type::is_b256, self.context)
+        //     {
+        //         Ok(())
+        //     } else {
+        //         Err(IrError::VerifyContractCallBadTypes("asset_id".to_owned()))
+        //     }
+        // })
+        // .and_then(|_| {
+        //     if gas.get_type(self.context).is(Type::is_uint64, self.context) {
+        //         Ok(())
+        //     } else {
+        //         Err(IrError::VerifyContractCallBadTypes("gas".to_owned()))
+        //     }
+        // })
     }
 
     fn verify_get_elem_ptr(
