@@ -5,9 +5,9 @@ use std::constants::BASE_ASSET_ID;
 use context_testing_abi::*;
 
 fn main() -> bool {
-    let zero = b256::min();
+    // let zero = b256::min();
     let gas: u64 = u64::max();
-    let amount: u64 = 11;
+    // let amount: u64 = 11;
     let other_contract_id = ContractId::from(0xa38576787f8900d66e6620548b6da8142b8bb4d129b2338609acd121ca126c10);
     let base_asset_id = BASE_ASSET_ID;
 
@@ -19,7 +19,7 @@ fn main() -> bool {
         coins: 0,
         asset_id: BASE_ASSET_ID.value,
     }();
-    //assert(returned_contract_id.into() == other_contract_id.into());
+    assert(returned_contract_id.into() == other_contract_id.into());
 
     // @todo set up a test contract to mint some assets for testing balances.
     // test Context::this_balance():
@@ -28,7 +28,7 @@ fn main() -> bool {
         coins: 0,
         asset_id: BASE_ASSET_ID.value,
     }(base_asset_id);
-    //assert(returned_this_balance == 0);
+    assert(returned_this_balance == 0);
 
     // test Context::balance_of_contract():
     let returned_contract_balance = test_contract.get_balance_of_contract {
@@ -36,7 +36,7 @@ fn main() -> bool {
         coins: 0,
         asset_id: BASE_ASSET_ID.value,
     }(base_asset_id, other_contract_id);
-    //assert(returned_contract_balance == 0);
+    assert(returned_contract_balance == 0);
 
     // The checks below don't work (AssertIdNotFound). The test should be
     // updated to forward coins that are actually available.
@@ -45,14 +45,14 @@ fn main() -> bool {
         gas: gas, coins: amount, asset_id: BASE_ASSET_ID
     }
     ();
-    //assert(returned_amount == amount);
+    assert(returned_amount == amount);
 
     // test Context::msg_asset_id():
     let returned_asset_id = test_contract.get_asset_id {
         gas: gas, coins: amount, asset_id: BASE_ASSET_ID
     }
     ();
-    //assert(returned_asset_id.into() == BASE_ASSET_ID);
+    assert(returned_asset_id.into() == BASE_ASSET_ID);
 
     // test Context::msg_gas():
     // @todo expect the correct gas here... this should fail using `1000`
@@ -60,7 +60,7 @@ fn main() -> bool {
         gas: gas, coins: 0, asset_id: BASE_ASSET_ID
     }
     ();
-    //assert(gas == 1000);
+    assert(gas == 1000);
 
     // test Context::global_gas():
     // @todo expect the correct gas here... this should fail using `1000`
@@ -68,6 +68,6 @@ fn main() -> bool {
         gas: gas, coins: 0, asset_id: BASE_ASSET_ID
     }
     ();
-    //assert(global_gas == 1000);*/
+    assert(global_gas == 1000);*/
     true
 }

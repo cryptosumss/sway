@@ -434,3 +434,19 @@ fn ok_encode() {
     // b256
     let _ = encode(0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF);
 }
+
+pub fn contract_call<T, TArgs>(contract_id: b256, method_name: str, args: TArgs, coins: u64, asset_id: b256, gas: u64) -> T
+where
+    TArgs: AbiEncode
+{
+    let first_parameter = encode(method_name);
+    let second_parameter = encode(args);
+    let params = encode(
+        (
+            contract_id,
+            asm(a: first_parameter.ptr()) { a: u64 },
+            asm(a: second_parameter.ptr()) { a: u64 },
+        )
+    );
+    __contract_call::<T>(params.ptr(), coins, asset_id, gas)
+}

@@ -684,8 +684,11 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
         // - The coins and gas must be u64s.
         // - The asset_id must be a B256
 
-        
-        dbg!(params.get_type(self.context).unwrap().as_string(self.context));
+        // params needs to be u64 because it was a `raw ptr` when typed
+        let params_type = params.get_type(self.context);
+        if !params.get_type(self.context).unwrap().is_uint64(self.context) {
+            return Err(IrError::VerifyContractCallBadTypes("params".to_owned()))
+        }
 
         Ok(())
         // let fields = params
