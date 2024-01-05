@@ -1126,7 +1126,7 @@ impl<'eng> FnCompiler<'eng> {
                     &type_arguments[0].span,
                 )?;
 
-                 // If the returned type is not copy type returns a pointer
+                // If the returned type is not copy type returns a pointer
                 let ret_is_copy_type = self
                     .engines
                     .te()
@@ -1139,7 +1139,7 @@ impl<'eng> FnCompiler<'eng> {
                 };
 
                 let params = self.compile_expression_to_value(context, md_mgr, &arguments[0])?;
-                
+
                 let coins = self.compile_expression_to_value(context, md_mgr, &arguments[1])?;
 
                 // asset id
@@ -1153,9 +1153,7 @@ impl<'eng> FnCompiler<'eng> {
                         CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
                     })?;
                 let tmp_val = self.current_block.append(context).get_local(tmp_var);
-                self.current_block
-                    .append(context)
-                    .store(tmp_val, asset_id);
+                self.current_block.append(context).store(tmp_val, asset_id);
                 let asset_id = self.current_block.append(context).get_local(tmp_var);
 
                 let gas = self.compile_expression_to_value(context, md_mgr, &arguments[3])?;
@@ -1165,11 +1163,19 @@ impl<'eng> FnCompiler<'eng> {
                 let returned_value = self
                     .current_block
                     .append(context)
-                    .contract_call(return_type, "SOMETHING".into(), params, coins, asset_id, gas)
+                    .contract_call(
+                        return_type,
+                        "SOMETHING".into(),
+                        params,
+                        coins,
+                        asset_id,
+                        gas,
+                    )
                     .add_metadatum(context, span_md_idx);
 
                 if return_type.is_ptr(context) {
-                    Ok(self.current_block
+                    Ok(self
+                        .current_block
                         .append(context)
                         .load(returned_value)
                         .add_metadatum(context, span_md_idx))
@@ -1361,7 +1367,7 @@ impl<'eng> FnCompiler<'eng> {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn  compile_contract_call(
+    fn compile_contract_call(
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,

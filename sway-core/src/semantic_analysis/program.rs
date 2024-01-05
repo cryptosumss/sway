@@ -1,17 +1,19 @@
 use crate::{
     language::{
-        parsed::ParseProgram,
-        ty::{self, TyProgram},
+        parsed::{ParseProgram, Expression, ExpressionKind, MatchExpression, MatchBranch, CodeBlock, Scrutinee, AsmExpression, AsmRegisterDeclaration, FunctionApplicationExpression, AstNode, AstNodeContent, IfExpression, Declaration, VariableDeclaration, IntrinsicFunctionExpression, FunctionDeclaration},
+        ty::{self, TyProgram, TyFunctionDecl, TyDecl, TyAstNode}, Literal, AsmRegister, AsmOp, CallPath, Purity,
     },
     metadata::MetadataManager,
     semantic_analysis::{
         namespace::{self, Namespace},
         TypeCheckContext,
     },
-    BuildConfig, Engines,
+    BuildConfig, Engines, TypeInfo, TypeBinding, TypeArgs, TypeArgument, transform::AttributesMap,
 };
+use sway_ast::Intrinsic;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_ir::{Context, Module};
+use sway_types::{Span, Ident, integer_bits::IntegerBits, Spanned};
 
 use super::{
     TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckFinalization,
@@ -35,7 +37,7 @@ impl TyProgram {
         let ctx =
             TypeCheckContext::from_root(&mut namespace, engines).with_kind(parsed.kind.clone());
 
-        let ctx = if let Some(build_config) = build_config {
+        let mut ctx = if let Some(build_config) = build_config {
             ctx.with_experimental_flags(build_config.experimental)
         } else {
             ctx
@@ -47,7 +49,8 @@ impl TyProgram {
         let modules_dep_graph = ty::TyModule::analyze(handler, root)?;
         let module_eval_order = modules_dep_graph.compute_order(handler)?;
 
-        ty::TyModule::type_check(handler, ctx, root, module_eval_order).and_then(|root| {
+        dbg!(1);
+        let mut m = ty::TyModule::type_check(handler, ctx.by_ref(), root, module_eval_order).and_then(|root| {
             let res = Self::validate_root(handler, engines, &root, kind.clone(), package_name);
             res.map(|(kind, declarations, configurables)| Self {
                 kind,
@@ -58,7 +61,203 @@ impl TyProgram {
                 logged_types: vec![],
                 messages_types: vec![],
             })
-        })
+        })?;
+
+        dbg!(1);
+
+        if matches!(dbg!(&parsed.kind), crate::language::parsed::TreeType::Contract) {
+            // /// Where 73 is the current offset in words from the start of the call frame.
+            // const FIRST_PARAMETER_OFFSET: u64 = 73;
+            // frame_ptr().add::<u64>(FIRST_PARAMETER_OFFSET).read()
+            fn call_decode_first_param(engines: &Engines,) -> Expression {
+                let string_slice_type_id = engines.te().insert(
+                    engines,
+                    TypeInfo::StringSlice,
+                    None,
+                );
+                Expression {
+                    kind: ExpressionKind::FunctionApplication(Box::new(
+                        FunctionApplicationExpression {
+                            call_path_binding: TypeBinding {
+                                inner: CallPath {
+                                    prefixes: vec![],
+                                    suffix: Ident::new_no_span("decode_first_param".into()),
+                                    is_absolute: false,
+                                },
+                                type_arguments: TypeArgs::Regular(vec![
+                                    TypeArgument {
+                                        type_id: string_slice_type_id,
+                                        initial_type_id: string_slice_type_id,
+                                        span: Span::dummy(),
+                                        call_path_tree: None,
+                                    },
+                                ]),
+                                span: Span::dummy(),
+                            },
+                            arguments: vec![
+                            ],
+                        },
+                    )),
+                    span: Span::dummy(),
+                }
+            }
+            
+            fn call_eq(engines: &Engines, l: Expression, r: Expression) -> Expression {
+                let string_slice_type_id = engines.te().insert(
+                    engines,
+                    TypeInfo::Boolean,
+                    None,
+                );
+                Expression {
+                    kind: ExpressionKind::FunctionApplication(Box::new(
+                        FunctionApplicationExpression {
+                            call_path_binding: TypeBinding {
+                                inner: CallPath {
+                                    prefixes: vec![],
+                                    suffix: Ident::new_no_span("eq".into()),
+                                    is_absolute: false,
+                                },
+                                type_arguments: TypeArgs::Regular(vec![]),
+                                span: Span::dummy(),
+                            },
+                            arguments: vec![l, r],
+                        },
+                    )),
+                    span: Span::dummy(),
+                }
+            }
+
+            let unit_type_id = engines.te().insert(
+                engines,
+                TypeInfo::Tuple(vec![]),
+                None,
+            );
+            let string_slice_type_id = engines.te().insert(
+                engines,
+                TypeInfo::StringSlice,
+                None,
+            );
+
+            let mut contents = vec![
+                AstNode { 
+                    content: AstNodeContent::Declaration(
+                        Declaration::VariableDeclaration(
+                            VariableDeclaration { 
+                                name: Ident::new_no_span("method_name".to_string()), 
+                                type_ascription: TypeArgument { 
+                                    type_id: string_slice_type_id,
+                                    initial_type_id: string_slice_type_id,
+                                    span: Span::dummy(),
+                                    call_path_tree: None
+                                }, 
+                                body: call_decode_first_param(engines), 
+                                is_mutable: false
+                            }
+                        )
+                    ),
+                    span: Span::dummy()
+                }
+            ];
+
+            let method_name_var_ref = Expression {
+                kind: ExpressionKind::Variable(
+                    Ident::new_no_span("method_name".to_string())
+                ),
+                span: Span::dummy(),
+            };
+
+            for (fn_decl, _) in  m.entry_fns(engines.de()) {
+                contents.push(AstNode { 
+                    content: AstNodeContent::Expression(
+                        Expression {
+                            kind: ExpressionKind::If(
+                                IfExpression {
+                                    // call eq
+                                    condition: Box::new(
+                                        call_eq(
+                                            engines,
+                                            method_name_var_ref.clone(),
+                                            Expression {
+                                                kind: ExpressionKind::Literal(
+                                                    Literal::String(fn_decl.name.span())
+                                                ),
+                                                span: Span::dummy(),
+                                            }
+                                        )
+                                    ),
+                                    then: Box::new(
+                                        Expression {
+                                            kind: ExpressionKind::IntrinsicFunction(
+                                                IntrinsicFunctionExpression {
+                                                    name: Ident::new_no_span("__log".to_string()),
+                                                    kind_binding: TypeBinding {
+                                                        inner: Intrinsic::Log,
+                                                        type_arguments: TypeArgs::Regular(vec![]),
+                                                        span: Span::dummy(),
+                                                    },
+                                                    arguments: vec![method_name_var_ref.clone()],
+                                                }
+                                            ),
+                                            span: Span::dummy(),
+                                        }
+                                    ),
+                                    r#else: None,
+                                }
+                            ),
+                            span: Span::dummy(),
+                        }
+                    ), 
+                    span: Span::dummy()
+                });
+            }
+
+            let entry_fn_decl = crate::language::parsed::function::FunctionDeclaration {
+                purity: Purity::ReadsWrites,
+                attributes: AttributesMap::default(),
+                name: Ident::new_no_span("__entry".to_string()),
+                visibility: crate::language::Visibility::Public,
+                body: CodeBlock {
+                    contents,
+                    whole_block_span: Span::dummy(),
+                },
+                parameters: vec![],
+                span: Span::dummy(),
+                return_type: TypeArgument {
+                    type_id: unit_type_id,
+                    initial_type_id: unit_type_id,
+                    span: Span::dummy(),
+                    call_path_tree: None,
+                },
+                type_parameters: vec![],
+                where_clause: vec![],
+            };
+
+            dbg!("__entry");
+            m.root.all_nodes.push(
+                TyAstNode::type_check (
+                    handler,
+                    ctx,
+                    AstNode {
+                        content: AstNodeContent::Declaration(
+                             Declaration::FunctionDeclaration(entry_fn_decl)
+                        ),
+                        span: Span::dummy(),
+                    }
+                )?
+            );
+
+            // m.declarations.push(
+            //     TyDecl::type_check(
+            //         handler,
+            //         ctx,
+            //         Declaration::FunctionDeclaration(entry_fn_decl)
+            //     )?
+            // );
+        }
+
+        dbg!(1);
+
+        Ok(m)
     }
 
     pub(crate) fn get_typed_program_with_initialized_storage_slots(

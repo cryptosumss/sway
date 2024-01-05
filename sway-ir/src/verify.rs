@@ -686,8 +686,12 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
 
         // params needs to be u64 because it was a `raw ptr` when typed
         let params_type = params.get_type(self.context);
-        if !params.get_type(self.context).unwrap().is_uint64(self.context) {
-            return Err(IrError::VerifyContractCallBadTypes("params".to_owned()))
+        if !params
+            .get_type(self.context)
+            .unwrap()
+            .is_uint64(self.context)
+        {
+            return Err(IrError::VerifyContractCallBadTypes("params".to_owned()));
         }
 
         Ok(())
@@ -695,7 +699,7 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
         //     .get_type(self.context)
         //     .and_then(|ty| ty.get_pointee_type(self.context))
         //     .map_or_else(std::vec::Vec::new, |ty| ty.get_field_types(self.context));
-        
+
         // if fields.len() != 3
         //     || !fields[0].is_b256(self.context)
         //     || !fields[1].is_uint64(self.context)
@@ -1023,7 +1027,10 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
         let dst_ty = self.get_ptr_type(dst_val, IrError::VerifyStoreToNonPointer)?;
         let stored_ty = stored_val.get_type(self.context);
         if self.opt_ty_not_eq(&Some(dst_ty), &stored_ty) {
-            dbg!(dst_val.get_instruction(self.context), stored_val.get_instruction(self.context));
+            dbg!(
+                dst_val.get_instruction(self.context),
+                stored_val.get_instruction(self.context)
+            );
             Err(IrError::VerifyStoreMismatchedTypes)
         } else {
             Ok(())

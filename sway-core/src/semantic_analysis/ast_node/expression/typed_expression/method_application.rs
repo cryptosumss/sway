@@ -13,8 +13,8 @@ use crate::{
     type_system::*,
 };
 use ast_node::typed_expression::check_function_arguments_arity;
-use sway_ast::Intrinsic;
 use std::collections::{HashMap, VecDeque};
+use sway_ast::Intrinsic;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -60,8 +60,6 @@ pub(crate) fn type_check_method_application(
     )?;
 
     let method = decl_engine.get_function(&original_decl_ref);
-
-    
 
     // check the method visibility
     if span.source_id() != method.span.source_id() && method.visibility.is_private() {
@@ -114,10 +112,8 @@ pub(crate) fn type_check_method_application(
                 constants::CONTRACT_CALL_GAS_PARAMETER_NAME
                 | constants::CONTRACT_CALL_COINS_PARAMETER_NAME
                 | constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME => {
-                    untyped_contract_call_params_map.insert(
-                        param.name.to_string(),
-                        param.value.clone()
-                    );
+                    untyped_contract_call_params_map
+                        .insert(param.name.to_string(), param.value.clone());
                     let type_annotation = type_engine.insert(
                         engines,
                         if param.name.span().as_str()
@@ -368,16 +364,17 @@ pub(crate) fn type_check_method_application(
             let tuple_args_type_id = ctx.engines.te().insert(
                 ctx.engines,
                 TypeInfo::Tuple(
-                    typed_argumens.iter().map(|&type_id| {
-                        TypeArgument {
+                    typed_argumens
+                        .iter()
+                        .map(|&type_id| TypeArgument {
                             type_id,
                             initial_type_id: type_id,
                             span: Span::dummy(),
                             call_path_tree: None,
-                        }
-                    }).collect()
+                        })
+                        .collect(),
                 ),
-                None
+                None,
             );
             Expression {
                 kind: ExpressionKind::FunctionApplication(Box::new(
@@ -389,25 +386,25 @@ pub(crate) fn type_check_method_application(
                                 is_absolute: false,
                             },
                             type_arguments: TypeArgs::Regular(vec![
-                                TypeArgument { 
-                                    type_id: return_type, 
-                                    initial_type_id: return_type, 
-                                    span: Span::dummy(), 
-                                    call_path_tree: None
+                                TypeArgument {
+                                    type_id: return_type,
+                                    initial_type_id: return_type,
+                                    span: Span::dummy(),
+                                    call_path_tree: None,
                                 },
-                                TypeArgument { 
-                                    type_id: tuple_args_type_id, 
-                                    initial_type_id: tuple_args_type_id, 
-                                    span: Span::dummy(), 
-                                    call_path_tree: None
+                                TypeArgument {
+                                    type_id: tuple_args_type_id,
+                                    initial_type_id: tuple_args_type_id,
+                                    span: Span::dummy(),
+                                    call_path_tree: None,
                                 },
                             ]),
                             span: Span::dummy(),
                         },
                         arguments: vec![
-                            Expression { 
-                                kind: ExpressionKind::Literal(Literal::B256([0u8; 32])), 
-                                span: Span::dummy()
+                            Expression {
+                                kind: ExpressionKind::Literal(Literal::B256([0u8; 32])),
+                                span: Span::dummy(),
                             },
                             method_name_expr,
                             as_tuple(arguments),
@@ -422,44 +419,47 @@ pub(crate) fn type_check_method_application(
         }
 
         fn string_slice_literal(ident: &BaseIdent) -> Expression {
-            Expression { kind:ExpressionKind::Literal(Literal::String(ident.span())), span: ident.span() }
+            Expression {
+                kind: ExpressionKind::Literal(Literal::String(ident.span())),
+                span: ident.span(),
+            }
         }
 
         fn as_tuple(elements: Vec<Expression>) -> Expression {
-            Expression { 
-                kind: ExpressionKind::Tuple(elements), 
-                span: Span::dummy()
+            Expression {
+                kind: ExpressionKind::Tuple(elements),
+                span: Span::dummy(),
             }
         }
 
-        let gas_expr = untyped_contract_call_params_map.remove(constants::CONTRACT_CALL_GAS_PARAMETER_NAME).unwrap_or_else(|| {
-            Expression { 
-                kind: ExpressionKind::Literal(Literal::U64(u64::MAX)), 
-                span: Span::dummy()
-            }
-        });
-        let coins_expr = untyped_contract_call_params_map.remove(constants::CONTRACT_CALL_COINS_PARAMETER_NAME).unwrap_or_else(|| {
-            Expression { 
-                kind: ExpressionKind::Literal(Literal::U64(0)), 
-                span: Span::dummy()
-            }
-        });
-        let asset_id_expr = untyped_contract_call_params_map.remove(constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME).unwrap_or_else(|| {
-            Expression { 
-                kind: ExpressionKind::Literal(Literal::B256([0u8; 32])), 
-                span: Span::dummy()
-            }
-        });
+        let gas_expr = untyped_contract_call_params_map
+            .remove(constants::CONTRACT_CALL_GAS_PARAMETER_NAME)
+            .unwrap_or_else(|| Expression {
+                kind: ExpressionKind::Literal(Literal::U64(u64::MAX)),
+                span: Span::dummy(),
+            });
+        let coins_expr = untyped_contract_call_params_map
+            .remove(constants::CONTRACT_CALL_COINS_PARAMETER_NAME)
+            .unwrap_or_else(|| Expression {
+                kind: ExpressionKind::Literal(Literal::U64(0)),
+                span: Span::dummy(),
+            });
+        let asset_id_expr = untyped_contract_call_params_map
+            .remove(constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME)
+            .unwrap_or_else(|| Expression {
+                kind: ExpressionKind::Literal(Literal::B256([0u8; 32])),
+                span: Span::dummy(),
+            });
 
-        let contract_call = call_contract_call (
+        let contract_call = call_contract_call(
             &mut ctx,
             method.return_type.type_id,
             string_slice_literal(&method.name),
             old_arguments.into_iter().skip(1).collect(),
             arguments.iter().map(|x| x.1.return_type).collect(),
-            coins_expr, 
-            asset_id_expr, 
-            gas_expr
+            coins_expr,
+            asset_id_expr,
+            gas_expr,
         );
         let mut expr = TyExpression::type_check(handler, ctx.by_ref(), contract_call)?;
 
@@ -467,8 +467,8 @@ pub(crate) fn type_check_method_application(
         match &mut expr.expression {
             ty::TyExpressionVariant::FunctionApplication { arguments, .. } => {
                 arguments[0].1 = (*selector.unwrap().contract_address).clone()
-            },
-            _ => unreachable!()
+            }
+            _ => unreachable!(),
         }
 
         return Ok(expr);
