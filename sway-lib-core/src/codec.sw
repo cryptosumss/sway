@@ -41,12 +41,44 @@ impl AsRawSlice for Buffer {
     }
 }
 
-pub trait AbiEncode {
-    fn abi_encode(self, ref mut buffer: Buffer);
+pub struct BufferReader {
+    ptr: raw_ptr,
+    pos: u64
 }
 
-impl AbiEncode for () {
-    fn abi_encode(self, ref mut _buffer: Buffer) {}
+impl BufferReader {
+    pub fn from_first_parameter() -> BufferReader {
+        const FIRST_PARAMETER_OFFSET: u64 = 73;
+
+        let ptr = asm() {
+            fp: raw_ptr
+        };
+        let ptr = ptr.add::<u64>(FIRST_PARAMETER_OFFSET);
+
+        BufferReader {
+            ptr,
+            pos: 0,
+        }
+    }
+
+    pub fn read_bytes(ref mut self, count: u64) -> raw_slice {
+        let next_pos = self.pos + count;
+
+        let ptr = self.ptr.add::<u8>(self.pos);
+        let slice =  asm(ptr: (ptr, count)) {
+            ptr: raw_slice
+        };
+
+        self.pos = next_pos;
+
+        slice
+    }
+}
+
+// Encode
+
+pub trait AbiEncode {
+    fn abi_encode(self, ref mut buffer: Buffer);
 }
 
 impl AbiEncode for bool {
@@ -55,7 +87,7 @@ impl AbiEncode for bool {
     }
 }
 
-// Numbers
+// Encode Numbers
 
 impl AbiEncode for b256 {
     fn abi_encode(self, ref mut buffer: Buffer) {
@@ -149,7 +181,7 @@ impl AbiEncode for u8 {
     }
 }
 
-// Strings
+// Encode Strings
 
 impl AbiEncode for str {
     fn abi_encode(self, ref mut buffer: Buffer) {
@@ -257,7 +289,7 @@ impl AbiEncode for str[5] {
     }
 }
 
-// Arrays and Slices
+// Encode Arrays and Slices
 
 pub fn encode<T>(item: T) -> raw_slice
 where
@@ -330,7 +362,7 @@ where
     }
 }
 
-// Tuples
+// Encode Tuples
 
 impl AbiEncode for () {
     fn abi_encode(self, ref mut _buffer: Buffer) {
@@ -418,6 +450,32 @@ where
         self.3.abi_encode(buffer);
         self.4.abi_encode(buffer);
         self.5.abi_encode(buffer);
+    }
+}
+
+// Decode 
+
+pub trait AbiDecode {
+    fn abi_decode(ref mut buffer: BufferReader) -> Self;
+}
+
+impl AbiDecode for u64 {
+    fn abi_decode(ref mut buffer: BufferReader) -> u64 {
+        let bytes = buffer.read_bytes(8);
+        asm(bytes: bytes) {
+            bytes: u64
+        }
+    }
+}
+
+impl AbiDecode for str {
+    fn abi_decode(ref mut buffer: BufferReader) -> str {
+        let len = u64::abi_decode(buffer);
+        let data = buffer.read_bytes(len);
+
+        asm(s: (data.ptr(), len)) {
+            s: str
+        }
     }
 }
 
