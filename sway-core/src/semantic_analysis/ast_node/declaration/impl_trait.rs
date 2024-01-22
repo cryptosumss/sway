@@ -78,7 +78,6 @@ impl TyImplTrait {
         }
 
         // type check the type that we are implementing for
-
         implementing_for.type_id = ctx.resolve_type(
             handler,
             implementing_for.type_id,
@@ -251,6 +250,7 @@ impl TyImplTrait {
                     &block_span,
                     true,
                 )?;
+                
                 ty::TyImplTrait {
                     impl_type_parameters: vec![], // this is empty because abi definitions don't support generics
                     trait_name,

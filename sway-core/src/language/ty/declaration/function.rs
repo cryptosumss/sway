@@ -47,7 +47,7 @@ impl DebugWithEngines for TyFunctionDecl {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         write!(
             f,
-            "{}{:?}{}({}):{}",
+            "{}{:?}{}({}):{}->{}",
             if self.is_trait_method_dummy {
                 "dummy ".to_string()
             } else {
@@ -59,7 +59,7 @@ impl DebugWithEngines for TyFunctionDecl {
                     "<{}>",
                     self.type_parameters
                         .iter()
-                        .map(|p| format!("{:?}", engines.help_out(p.initial_type_id)))
+                        .map(|p| format!("{:?} -> {:?}", engines.help_out(p.initial_type_id), engines.help_out(p.type_id)))
                         .collect::<Vec<_>>()
                         .join(", ")
                 )
@@ -76,6 +76,7 @@ impl DebugWithEngines for TyFunctionDecl {
                 .collect::<Vec<_>>()
                 .join(", "),
             engines.help_out(self.return_type.initial_type_id),
+            engines.help_out(self.return_type.type_id),
         )
     }
 }
