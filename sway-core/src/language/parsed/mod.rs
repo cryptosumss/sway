@@ -18,7 +18,9 @@ pub use return_statement::*;
 use sway_error::handler::ErrorEmitted;
 pub use use_statement::{ImportType, UseStatement};
 
-use sway_types::span::Span;
+use sway_types::{span::Span, BaseIdent};
+
+use crate::TypeArgument;
 
 /// Represents some exportable information that results from compiling some
 /// Sway source code.
@@ -39,6 +41,22 @@ pub struct AstNode {
     pub content: AstNodeContent,
     /// The [Span] representing this entire [AstNode].
     pub span: Span,
+}
+
+impl AstNode {
+    pub fn variable_declaration(name: BaseIdent, type_ascription: TypeArgument, body: Expression, is_mutable: bool) -> Self {
+        AstNode {
+            content: AstNodeContent::Declaration(
+                Declaration::VariableDeclaration(VariableDeclaration { 
+                    name, 
+                    type_ascription, 
+                    body, 
+                    is_mutable
+                })
+            ),
+            span: Span::dummy()
+        }
+    }
 }
 
 /// Represents the various structures that constitute a Sway program.
