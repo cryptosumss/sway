@@ -783,7 +783,9 @@ impl ReplaceDecls for TyExpressionVariant {
 
                     #[inline]
                     fn stack_frame_depth() -> usize {
-                        let lines = format!("{:?}", std::backtrace::Backtrace::capture()).split("{ fn:").count();
+                        let lines = format!("{:?}", std::backtrace::Backtrace::capture())
+                            .split("{ fn:")
+                            .count();
                         lines
                     }
 
